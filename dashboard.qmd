@@ -1,0 +1,189 @@
+---
+title: "MyBook Dashboard"
+format: 
+  dashboard:
+    logo: images/books.png
+    nav-buttons: 
+      - icon: github
+        href: https://github.com/
+theme: [zephyr, custom.scss]
+fig-width: 8
+fig-asp: 0.4
+fig-align: center
+fig-responsive: true
+---
+
+```{r}
+#| label: load-packages
+
+pacman::p_load(
+  tidyverse,
+  DT,
+  googlesheets4,
+  gt,
+  gtExtras
+)
+```
+
+```{r}
+#| label: load-data
+
+data <- read_sheet("https://docs.google.com/spreadsheets/d/1Z7JEsVuv3z0LtYkN8ApH_Lrm2LdxgRNA7kfIqTMppwk/edit#gid=0")
+
+```
+
+#  {.sidebar width="270px"}
+
+The purpose of this dashboard is to track the books that i have read
+
+Notes : The column Rating not my personal score but the scores I got from [goodreads](https://www.goodreads.com/)
+
+# Summary
+
+## Row {height="20%"}
+
+```{r}
+#| content: valuebox
+#| title: "Total Books Read"
+
+ 
+  total_book <-  n_distinct(data)
+
+list(
+  icon = "check-circle",
+  color = "success",
+  value = total_book
+)
+
+```
+
+```{r}
+#| content: valuebox
+#| title: "Total Pages"
+
+total_page <- sum(data$Pages)
+  
+
+list(
+  icon = "file-earmark",
+  color = "primary",
+  value = total_page
+)
+```
+
+```{r}
+#| content: valuebox
+#| title: "Highest Rating Book"
+
+best_rating <- max(data$Rating)
+
+list(
+  icon = "book",
+  color = "info",
+  value = best_rating
+)
+```
+
+## row {height:"50%"}
+
+### Column
+
+```{r}
+#| title: Top Authors
+#| warning: false
+
+data |> 
+  count(Author) |> 
+  arrange(desc(n)) |> 
+  slice_head(n = 5) |> 
+  mutate(Author = as.factor(Author)) |>
+  ggplot(aes(x = reorder(Author, n) , y = n)) +
+  geom_col(fill = "#0e2635") +
+  coord_flip() +
+  labs(x = "Authors", y = "Total Book") +
+  theme_minimal()
+
+```
+
+### Column
+
+```{r}
+#| title: Best Rating Books
+#| warning: false
+
+data |> 
+  select(Title, Rating) |> 
+  arrange(desc(Rating)) |> 
+  slice_head(n = 5) |> 
+  ggplot(aes(x = reorder(Title, Rating) , y = Rating)) +
+  geom_col(fill = "#ae8b2d") + 
+  geom_text(aes(label = Rating), nudge_y = -0.2, color = "white") +
+  coord_flip() +
+  labs(x = "Title") + 
+  theme_minimal()
+
+```
+
+## Row {height="30%"}
+
+### Column
+
+```{r}
+#| title: Genre
+#| expandable: false
+
+data |> 
+  count(Genre) |> 
+  mutate(Prop = n/sum(n)) |> 
+  gt() |> 
+  fmt_percent(columns = Prop, decimals = 1) |> 
+  cols_label(n = "Total", Prop = "Proportion") |> 
+  cols_align(align = "center", columns = everything()) |> 
+  opt_stylize(style = 1, color = "gray", add_row_striping = TRUE) |> 
+  as_raw_html() 
+  
+
+```
+
+### Column
+
+```{r}
+#| title: Language
+#| expandable: false
+
+data |> 
+  count(Language) |> 
+  mutate(prop = n/sum(n)) |> 
+  gt() |> 
+  fmt_percent(columns = prop, decimals = 1) |> 
+  cols_label(n = "Total", prop = "Proportion") |> 
+  cols_align(align = "center", columns = everything()) |> 
+  opt_stylize(style = 1, color = "gray", add_row_striping = TRUE) |> 
+  as_raw_html() 
+  
+```
+
+# Data
+
+```{r}
+logo_check <- "https://cdn4.iconfinder.com/data/icons/basicolor-arrows-checks/24/ok_check_done-512.png"
+logo_xmark <- "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTdNZxx6Or6x_-j0xT9HuVC6zsKWExXuCH3rg&s"
+
+data2 <- data |> 
+  mutate(No = row_number()) |> 
+  relocate(No, .before = Title)
+  
+
+data2 |> 
+  mutate(Language = if_else(Language == "Indonesia", "ID", "US"), Status = if_else(Status == "Completed", logo_check, logo_xmark)) |> 
+  gt() |> 
+  gt_color_rows(Rating, palette = "Pastel2", direction = -1) |> 
+  fmt_flag(Language) |> 
+  fmt_image(columns = Status) |> 
+  cols_align(align = "center", columns = everything()) |> 
+  opt_stylize(style = 6, color = "blue")
+ 
+  
+
+```
+
